@@ -1,3 +1,4 @@
 *.pyc
 dumps
 .idea
+.DS_Store
