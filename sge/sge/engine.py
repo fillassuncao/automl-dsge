@@ -56,13 +56,11 @@ def evolutionary_algorithm(evaluation_function=None):
     best_generation = -1
 
     evaluation_function.dataset = evaluation_function.load_test_data(params['RUN'])
+    evaluation_function.load_train_data(params['RUN'])
 
     population = list(make_initial_population())
     it = 0
     while it <= params['GENERATIONS']:
-
-        if it%5 == 0:
-            evaluation_function.load_train_data(params['RUN'])
 
         for i in population:
             if i['fitness'] is None:
@@ -94,4 +92,5 @@ def evolutionary_algorithm(evaluation_function=None):
             new_population.append(ni)
         population = new_population
         it += 1
+
 

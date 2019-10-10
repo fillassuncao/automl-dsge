@@ -166,3 +166,4 @@ if __name__ == "__main__":
     import sge
     eval_func = AutoML(problem='CE')
     sge.evolutionary_algorithm(evaluation_function=eval_func)
+
