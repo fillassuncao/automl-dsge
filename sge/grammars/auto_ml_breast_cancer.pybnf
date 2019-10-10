@@ -75,7 +75,7 @@
 <shrink_threshold_randfloat> ::= RANDFLOAT(0.0,30.0)
 <solver_discrim> ::= solver:svd | solver:lsqr
 <solver_lr_options> ::= solver:liblinear | solver:sag | solver:newton-cg | solver:lbfgs
-<max_iter_lr> ::= 10 | 100 | 150 | 300 | 350 | 400 | 450 | 500
+<max_iter_lr> ::= 10 | 100 | 150 | 300 | 350 | 400 | 450 |500
 <cv> ::= cv:<cv_randint> | cv:None
 <cv_randint> ::= RANDINT(2,10)
 <loss_sgd> ::= loss:hinge| loss:log| loss:modified_huber | loss:squared_hinge | loss:perceptron | loss:squared_loss | loss:huber | loss:epsilon_insensitive | loss:squared_epsilon_insensitive

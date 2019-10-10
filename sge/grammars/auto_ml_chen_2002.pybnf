@@ -11,11 +11,11 @@
 <norm> ::= norm:l1 | norm:l2
 <boolean> ::= True | False
 <degree_1>  ::= RANDINT(2,10)
-<features> ::= RANDINT(2,8)
+<features> ::= RANDINT(2,84)
 <score_function> ::= score_function:f_classif | score_function:chi2
 <percentile> ::= RANDINT(5,95)
 <value_rand_1> ::= RANDFLOAT(0.0,1.0)
-<featuresToSelect> ::= RANDINT(1,8)
+<featuresToSelect> ::= RANDINT(1,84)
 <density> ::= density:auto | density:<density_randfloat>
 <density_randfloat> ::= RANDFLOAT(0.00001,1.0)
 <cv_rfe> ::= cv:2 | cv:3 | cv:5 | cv:10
@@ -75,7 +75,7 @@
 <shrink_threshold_randfloat> ::= RANDFLOAT(0.0,30.0)
 <solver_discrim> ::= solver:svd | solver:lsqr
 <solver_lr_options> ::= solver:liblinear | solver:sag | solver:newton-cg | solver:lbfgs
-<max_iter_lr> ::= 10 | 100 | 150 | 300 | 350 | 400 | 450 | 500
+<max_iter_lr> ::= 10 | 100 | 150 | 300 | 350 | 400 | 450 |500
 <cv> ::= cv:<cv_randint> | cv:None
 <cv_randint> ::= RANDINT(2,10)
 <loss_sgd> ::= loss:hinge| loss:log| loss:modified_huber | loss:squared_hinge | loss:perceptron | loss:squared_loss | loss:huber | loss:epsilon_insensitive | loss:squared_epsilon_insensitive

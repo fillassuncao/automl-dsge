@@ -10,6 +10,8 @@ from sge.parameters import (
     params,
     set_parameters
 )
+import numpy 
+from copy import deepcopy
 
 
 def generate_random_individual():
@@ -40,6 +42,7 @@ def setup():
         params['SEED'] = int(datetime.now().microsecond)
     logger.prepare_dumps()
     random.seed(params['SEED'])
+    numpy.random.seed(int(params['SEED']))
     grammar.set_path(params['GRAMMAR'])
     grammar.read_grammar()
     grammar.set_max_tree_depth(params['MAX_TREE_DEPTH'])
@@ -48,16 +51,38 @@ def setup():
 
 def evolutionary_algorithm(evaluation_function=None):
     setup()
+
+    best_fitness = 9999
+    best_generation = -1
+
+    evaluation_function.dataset = evaluation_function.load_test_data(params['RUN'])
+
     population = list(make_initial_population())
     it = 0
     while it <= params['GENERATIONS']:
+
+        if it%5 == 0:
+            evaluation_function.load_train_data(params['RUN'])
+
         for i in population:
             if i['fitness'] is None:
                 evaluate(i, evaluation_function)
         population.sort(key=lambda x: x['fitness'])
 
         logger.evolution_progress(it, population)
-        new_population = population[:params['ELITISM']]
+
+        if population[0]['fitness'] < best_fitness:
+            best_fitness = population[0]['fitness']
+            best_generation = it
+
+        if it >= best_generation+5:
+            break
+
+        new_population = deepcopy(population[:params['ELITISM']])
+
+        for ind in new_population:
+            ind['fitness'] = None
+
         while len(new_population) < params['POPSIZE']:
             if random.random() < params['PROB_CROSSOVER']:
                 p1 = tournament(population, params['TSIZE'])

@@ -6,7 +6,7 @@ import random
 import pandas as pd
 from sklearn import metrics
 from sklearn.preprocessing import LabelEncoder
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold
 from sklearn.pipeline import make_pipeline
 import numpy as np
 import multiprocessing as mp
@@ -34,47 +34,45 @@ def customwarn(message, category, filename, lineno, file=None, line=None):
 warnings.showwarning = customwarn
 
 class AutoML():
-    def __init__(self, invalid_fitness=9999999):
-        self.dataset = self.load_data()
+    def __init__(self, problem, invalid_fitness=9999999):
+        self.problem = problem
+
+    def load_test_data(self, run):
+
+        test_df = pd.read_csv('data/%s/%s-Test%d.csv' % (self.problem, self.problem, run%10), header=0, delimiter=",")
+
+        objectList = list(test_df.select_dtypes(include=['object']).columns)
+
+        if ('class' in objectList and len(objectList)>=1):
+            test_df = test_df.apply(LabelEncoder().fit_transform)
+
+        test_data = test_df.ix[:,:-1].values
+        test_target = test_df["class"].values
+
+        dataset = {'X_test': test_data, 'y_test': test_target}
+
+        return dataset
 
 
-    def load_data(self, problem = 'CE'):
+    def load_train_data(self, run):
+        dataset_train_file = 'data/%s/%s-Training%d.csv' % (self.problem, self.problem, run%10)
 
-        data_train = []
-        data_test = []
-
-        if problem == 'glass':    
-            for x in range(10):
-                data_train.append(pd.read_csv('/home/cdv/Documents/fga/sge3-progsys/sge/data/glass/glass-Training%d.csv' % x, header=0, delimiter=","))
-                data_test.append(pd.read_csv('/home/cdv/Documents/fga/sge3-progsys/sge/data/glass/glass-Test%d.csv' % x, header=0, delimiter=","))
-
-
-        elif problem == 'CE':
-            for x in range(10):
-                data_train.append(pd.read_csv('/home/cdv/Documents/fga/sge3-progsys/sge/data/CE/CE-Training%d.csv' % x, header=0, delimiter=","))
-                data_test.append(pd.read_csv('/home/cdv/Documents/fga/sge3-progsys/sge/data/CE/CE-Test%d.csv' % x, header=0, delimiter=","))
-
-
-        training_df = pd.concat(data_train, axis=0, ignore_index=True)
-        test_df = pd.concat(data_test, axis=0, ignore_index=True)
+        training_df = pd.read_csv(dataset_train_file, header=0, delimiter=",")
 
         objectList = list(training_df.select_dtypes(include=['object']).columns)
 
         if ('class' in objectList and len(objectList)>=1):
             training_df = training_df.apply(LabelEncoder().fit_transform)
-            test_df = test_df.apply(LabelEncoder().fit_transform)
 
         train_data = training_df.ix[:,:-1].values
         train_target = training_df["class"].values
 
-        test_data = test_df.ix[:,:-1].values
-        test_target = test_df["class"].values
+        # X_train, X_validation, y_train, y_validation = train_test_split(train_data, train_target, train_size=0.7, test_size=0.3, stratify=train_target)
 
-        X_train, X_validation, y_train, y_validation = train_test_split(train_data, train_target, train_size=0.7, test_size=0.3, stratify=train_target)
-
-        dataset = {'X_train': X_train, 'X_val': X_validation, 'y_train': y_train, 'y_val': y_validation, 'X_test': test_data, 'y_test': test_target}
-
-        return dataset
+        self.dataset['X_train'] =  train_data
+        self.dataset['y_train'] = train_target
+        # self.dataset['X_validation'] =  X_validation
+        # self.dataset['y_validation'] = y_validation
 
 
     def process_float(self, value):
@@ -132,33 +130,39 @@ class AutoML():
             return -0.5, -0.5, None
 
         try:
-            pipeline.fit(self.dataset['X_train'], self.dataset['y_train'])
+            cv = StratifiedKFold(n_splits=3, shuffle=True)
+            scores = cross_val_score(pipeline, self.dataset['X_train'], self.dataset['y_train'], cv=cv, scoring='f1_weighted')
         except ValueError:
             return -0.5, -0.5, None
         except MemoryError:
             return -0.5, -0.5, None
 
-        y_pred = pipeline.predict(self.dataset['X_val'])
-        f1_val = metrics.f1_score(self.dataset['y_val'], y_pred, average='weighted')
-
-
+        pipeline.fit(self.dataset['X_train'], self.dataset['y_train'])
         y_pred_test = pipeline.predict(self.dataset['X_test'])
         f1_val_test = metrics.f1_score(self.dataset['y_test'], y_pred_test, average='weighted')
 
-        return f1_val, f1_val_test, pipeline.__str__()
+
+        return np.mean(scores), f1_val_test, pipeline.__str__()
         
 
 
     def evaluate(self, individual):
 
         pipeline_modules = self.parse_phenotype(individual)
-        f1_val, f1_val_test, pipeline = exec_timeout(func=self.assemble_pipeline, args=[pipeline_modules], timeout=TIMEOUT)
+        try:
+            f1_val, f1_val_test, pipeline = exec_timeout(func=self.assemble_pipeline, args=[pipeline_modules], timeout=TIMEOUT)
+        except:
+            return 9999, {'individual':individual, 'invalid': 1}
 
         fitness = 1-f1_val
 
-        return fitness,  {'individual': individual, 'f1score_val': f1_val, 'f1score_test': f1_val_test, 'pipeline': pipeline}
+        invalid = 0
+        if f1_val < 0:
+            invalid = 1
+
+        return fitness,  {'individual': individual, 'f1score_val': f1_val, 'f1score_test': f1_val_test, 'pipeline': pipeline, 'invalid': invalid}
 
 if __name__ == "__main__":
     import sge
-    eval_func = AutoML()
+    eval_func = AutoML(problem='CE')
     sge.evolutionary_algorithm(evaluation_function=eval_func)

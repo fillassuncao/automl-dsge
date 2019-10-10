@@ -1,6 +1,6 @@
 POPSIZE: 100
-GENERATIONS: 50
-ELITISM: 1                    # number of individuals that survive
+GENERATIONS: 100
+ELITISM: 5                   # number of individuals that survive
 PROB_CROSSOVER: 0.9
 PROB_MUTATION: 0.1
 TSIZE: 2

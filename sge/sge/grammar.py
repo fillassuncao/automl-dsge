@@ -19,6 +19,7 @@ class Grammar:
         self.ordered_non_terminals = ordered_set.OrderedSet()
         self.non_recursive_options = {}
         self.number_of_options_by_non_terminal = None
+        self.number_of_options_random = None
         self.start_rule = None
         self.max_depth = None
         self.max_init_depth = None
@@ -91,6 +92,17 @@ class Grammar:
                 self.number_of_options_by_non_terminal.setdefault(nt, len(self.grammar[nt]))
         return self.number_of_options_by_non_terminal
 
+    #new code - count number of random productions
+    def count_number_options_random(self):
+        if self.number_of_options_random is None:
+            self.number_of_options_random = {}
+            for nt in self.ordered_non_terminals:
+                self.number_of_options_random.setdefault(nt, 'RAND' in self.grammar[nt][0][0][0])
+
+        return self.number_of_options_random
+    #end new code
+
+
     def compute_non_recursive_options(self):
         self.non_recursive_options = {}
         for nt in self.ordered_non_terminals:
@@ -110,6 +122,7 @@ class Grammar:
         return non_recursive_elements
 
     def recursive_individual_creation(self, genome, symbol, current_depth):
+
         if current_depth > self.max_init_depth:
             possibilities = []
             for index, option in enumerate(self.grammar[symbol]):
@@ -122,7 +135,29 @@ class Grammar:
         else:
             expansion_possibility = random.randint(0, self.count_number_of_options_in_production()[symbol] - 1)
 
-        genome[self.get_non_terminals().index(symbol)].append(expansion_possibility)
+        #new code to randint and ranfloat
+        expansion_possibility_genome = expansion_possibility
+        if 'RAND' in self.grammar[symbol][expansion_possibility][0][0]:
+            rand_symbol = self.grammar[symbol][expansion_possibility][0][0]
+            if 'INT' in rand_symbol:
+                rand_type = 'randint'
+                rand_function = random.randint
+                rand_symbol = rand_symbol.replace('RANDINT', '')
+            elif 'FLOAT' in rand_symbol:
+                rand_type = 'randfloat'
+                rand_function = random.uniform
+                rand_symbol = rand_symbol.replace('RANDFLOAT', '')
+
+            rand_symbol = rand_symbol.replace('(', '').replace(')', '')
+
+            rand_min, rand_max = map(float, rand_symbol.split(','))
+
+            expansion_possibility_genome = (rand_type, rand_min, rand_max, rand_function(rand_min, rand_max))
+
+        genome[self.get_non_terminals().index(symbol)].append(expansion_possibility_genome)
+
+        #end of new code
+
         expansion_symbols = self.grammar[symbol][expansion_possibility]
         depths = [current_depth]
         for sym in expansion_symbols:
@@ -141,8 +176,40 @@ class Grammar:
         return output, max_depth
 
     def _recursive_mapping(self, mapping_rules, positions_to_map, current_sym, current_depth, output):
+        
+
         depths = [current_depth]
-        if current_sym[1] == self.T:
+
+        #new code for decoding randints and randfloats
+        if current_sym[1] == self.NT and 'RAND' in self.grammar[current_sym[0]][0][0][0]:
+            current_sym_pos = self.ordered_non_terminals.index(current_sym[0])
+
+            if positions_to_map[current_sym_pos] >= len(mapping_rules[current_sym_pos]):
+                rand_symbol = self.grammar[current_sym[0]][0][0][0]
+                if 'RAND' in rand_symbol:
+                    if 'INT' in rand_symbol:
+                        rand_type = 'randint'
+                        rand_function = random.randint
+                        rand_symbol = rand_symbol.replace('RANDINT', '')
+                    elif 'FLOAT' in rand_symbol:
+                        rand_type = 'randfloat'
+                        rand_function = random.uniform
+                        rand_symbol = rand_symbol.replace('RANDFLOAT', '')
+
+                    rand_symbol = rand_symbol.replace('(', '').replace(')', '')
+
+                    rand_min, rand_max = map(float, rand_symbol.split(','))
+
+                    expansion_possibility_genome = (rand_type, rand_min, rand_max, rand_function(rand_min, rand_max))
+                    mapping_rules[current_sym_pos].append(expansion_possibility_genome)
+
+
+            current_production = mapping_rules[current_sym_pos][positions_to_map[current_sym_pos]]
+            positions_to_map[current_sym_pos] += 1
+            output.append(str(current_production[-1]))
+        #end of new code
+
+        elif current_sym[1] == self.T:
             output.append(current_sym[0])
         else:
             current_sym_pos = self.ordered_non_terminals.index(current_sym[0])
@@ -150,7 +217,6 @@ class Grammar:
             size_of_gene = self.count_number_of_options_in_production()
             if positions_to_map[current_sym_pos] >= len(mapping_rules[current_sym_pos]):
                 if current_depth > self.max_depth:
-                    # print "True"
                     possibilities = []
                     for index, option in enumerate(self.grammar[current_sym[0]]):
                         for s in option:
@@ -225,6 +291,7 @@ set_path = _inst.set_path
 read_grammar = _inst.read_grammar
 get_non_terminals = _inst.get_non_terminals
 count_number_of_options_in_production = _inst.count_number_of_options_in_production
+count_number_options_random = _inst.count_number_options_random
 compute_non_recursive_options = _inst.compute_non_recursive_options
 list_non_recursive_productions = _inst.list_non_recursive_productions
 recursive_individual_creation = _inst.recursive_individual_creation
